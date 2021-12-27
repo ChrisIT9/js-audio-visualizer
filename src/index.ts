@@ -1,14 +1,14 @@
 interface Threshold {
     minBound: number,
-    highBound: number,
+    maxBound: number,
     boost: number;
 }
 
 const intervalMs = 25;
 let minScale = 1.25;
 let maxScale = 2;
-const minColor = 16400000;
-const maxColor = 16600000;
+const minColor = 13472076;
+const maxColor = 13472332;
 const borderSize = 10;
 let epilepsyMode = false;
 var interval: number | undefined;
@@ -16,14 +16,34 @@ let currentlyPlaying = false;
 const url = "http://localhost:3001/";
 let x = 0;
 let prev: { x: number, y: number } | undefined;
+let source: AudioBufferSourceNode | undefined;
+let analyser: AnalyserNode | undefined;
+let dataArray: Float32Array | undefined;
 
 const thresholds: Threshold[] = [
-    { minBound: 0.0, highBound: 0.3, boost: 1.2 },
-    { minBound: 0.3, highBound: 0.5, boost: 1.15 }, 
-    { minBound: 0.5, highBound: 0.6, boost: 1.1 }, 
-    { minBound: 0.6, highBound: 0.75, boost: 1.05 },
-    { minBound: 0.75, highBound: 1.00, boost: 1.0 }
+    { minBound: 0.0, maxBound: 0.3, boost: 1.2 },
+    { minBound: 0.3, maxBound: 0.5, boost: 1.15 }, 
+    { minBound: 0.5, maxBound: 0.6, boost: 1.1 }, 
+    { minBound: 0.6, maxBound: 0.75, boost: 1.05 },
+    { minBound: 0.75, maxBound: 1.00, boost: 1.0 }
 ];
+
+const drawFrequency = (frequencyData: Float32Array) => {
+    const barWidth = 20;
+    let xAxis = 0;
+    const freqCanvas = document.getElementById("frequency") as any;
+    const context = freqCanvas.getContext('2d');
+
+    context.fillStyle = 'rgb(84, 70, 118)';
+    context.fillRect(0, 0, freqCanvas.width, freqCanvas.height);
+
+    for (let i = 0; i < frequencyData.length; i++) {
+        const barHeight = (frequencyData[i] + 140) * 2;
+        context.fillStyle = `rgb(${Math.floor(barHeight + 100)}, 50, 50)`;
+        context.fillRect(xAxis, freqCanvas.height - barHeight / 2, barWidth, barHeight / 2);
+        xAxis += barWidth + 1.5;
+    }
+}
 
 const normalizeHex = (value: number) => {
     let bgColor = Math.round(value).toString(16);
@@ -65,7 +85,7 @@ const normalizeValue = (value: number, min: number, max: number, minRange: numbe
     
     
     // if (!thresholds) 
-        return (maxRange - minRange) * (value - min) / (max - min) + minRange;
+    return (maxRange - minRange) * (value - min) / (max - min) + minRange;
 
     /* for (let i = 0; i < thresholds.length; i++) {
         if (i === thresholds.length - 1 || (loudness >= thresholds[i].minBound && loudness < thresholds[i].highBound))
@@ -79,28 +99,29 @@ const readBuffer = async () => {
     if (currentlyPlaying) return;
 
     currentlyPlaying = true;
-    const audioContext = new AudioContext();
-    const audioTag = document.getElementById("song");
+
     const circle = document.getElementById("circle");
     const container = document.getElementById("container");
-
-    if (audioTag) (audioTag as any).src = url;
-
+    
+    const audioContext = new AudioContext();
+    let buffer: AudioBuffer | undefined;
     const res = await fetch(url);
-    const buffer = await res.arrayBuffer();
+    const resBuffer = await res.arrayBuffer();
     let leftChannelBuffer: Float32Array | undefined;
     let rightChannelBuffer: Float32Array | undefined;
     const leftChannelAverages: number[] = new Array();
     const rightChannelAverages: number[] = new Array();
     const bothChannelsAverage: number[] = new Array();
-
+    
     let length: number | undefined;
 
-    await audioContext.decodeAudioData(buffer, (res) => {
-        length = res.duration;
-        leftChannelBuffer = res.getChannelData(0);
-        if (res.numberOfChannels === 2) rightChannelBuffer = res.getChannelData(1);
+    await audioContext.decodeAudioData(resBuffer, (finalBuffer) => {
+        buffer = finalBuffer;
+        length = finalBuffer.duration;
+        leftChannelBuffer = finalBuffer.getChannelData(0);
+        if (finalBuffer.numberOfChannels === 2) rightChannelBuffer = finalBuffer.getChannelData(1);
     }, (err) => console.log(err));
+    
 
     if (leftChannelBuffer && length) {
         const bytesPerSecond = Math.ceil(leftChannelBuffer.length / length);
@@ -117,6 +138,7 @@ const readBuffer = async () => {
                 rightChannelAverages.push(chunkSum / slicedArray.length);
             }
         }
+
         if (leftChannelBuffer && rightChannelBuffer)
             leftChannelAverages.map((item, index) => { bothChannelsAverage.push((item + rightChannelAverages[index]) / 2) });
         else 
@@ -127,18 +149,28 @@ const readBuffer = async () => {
 
         let index = 0;
 
-        if (audioTag) {
-            (audioTag as any).currentTime = 0;
-            (audioTag as any).play();
-        } 
+        if (buffer) {
+            source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 64;
+            analyser.connect(audioContext.destination);
+            source.connect(analyser);
+            source.start();
+        }
         
         const currentValue = bothChannelsAverage[index++];
-        
         let normalizedValue = normalizeValue(currentValue, min, max, minScale, maxScale);
 
         if (circle) {
-            circle.style.transition = "linear all 0.025s";
+            circle.style.transition = "linear all 0.05s";
             circle.style.transform = `scale(${normalizedValue})`; 
+
+            if (analyser) {
+                dataArray = new Float32Array(analyser.frequencyBinCount);
+                analyser.getFloatFrequencyData(dataArray);
+                drawFrequency(dataArray);
+            }
         }
 
         if (container && epilepsyMode) {
@@ -155,6 +187,13 @@ const readBuffer = async () => {
                 clearInterval(interval);
                 currentlyPlaying = false;
             } 
+            
+            if (analyser) {
+                dataArray = new Float32Array(analyser.frequencyBinCount);
+                analyser.getFloatFrequencyData(dataArray);
+                drawFrequency(dataArray);
+            }
+
             const currentValue = bothChannelsAverage[index++];
             let normalizedValue = normalizeValue(currentValue, min, max, minScale, maxScale);
 
@@ -176,8 +215,8 @@ const stopSong = () => {
         circle.style.transform = "scale(1)";
     }
     if (container) container.style.border = `${borderSize}px solid #ffffff`;
-    const audioTag = document.getElementById("song");
-    if (audioTag) (audioTag as any).pause();
+
+    source?.stop();
     clearInterval(interval);
     currentlyPlaying = false;
 }

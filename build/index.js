@@ -11,8 +11,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 const intervalMs = 25;
 let minScale = 1.25;
 let maxScale = 2;
-const minColor = 16400000;
-const maxColor = 16600000;
+const minColor = 13472076;
+const maxColor = 13472332;
 const borderSize = 10;
 let epilepsyMode = false;
 var interval;
@@ -20,13 +20,30 @@ let currentlyPlaying = false;
 const url = "http://localhost:3001/";
 let x = 0;
 let prev;
+let source;
+let analyser;
+let dataArray;
 const thresholds = [
-    { minBound: 0.0, highBound: 0.3, boost: 1.2 },
-    { minBound: 0.3, highBound: 0.5, boost: 1.15 },
-    { minBound: 0.5, highBound: 0.6, boost: 1.1 },
-    { minBound: 0.6, highBound: 0.75, boost: 1.05 },
-    { minBound: 0.75, highBound: 1.00, boost: 1.0 }
+    { minBound: 0.0, maxBound: 0.3, boost: 1.2 },
+    { minBound: 0.3, maxBound: 0.5, boost: 1.15 },
+    { minBound: 0.5, maxBound: 0.6, boost: 1.1 },
+    { minBound: 0.6, maxBound: 0.75, boost: 1.05 },
+    { minBound: 0.75, maxBound: 1.00, boost: 1.0 }
 ];
+const drawFrequency = (frequencyData) => {
+    const barWidth = 20;
+    let xAxis = 0;
+    const freqCanvas = document.getElementById("frequency");
+    const context = freqCanvas.getContext('2d');
+    context.fillStyle = 'rgb(84, 70, 118)';
+    context.fillRect(0, 0, freqCanvas.width, freqCanvas.height);
+    for (let i = 0; i < frequencyData.length; i++) {
+        const barHeight = (frequencyData[i] + 140) * 2;
+        context.fillStyle = `rgb(${Math.floor(barHeight + 100)}, 50, 50)`;
+        context.fillRect(xAxis, freqCanvas.height - barHeight / 2, barWidth, barHeight / 2);
+        xAxis += barWidth + 1.5;
+    }
+};
 const normalizeHex = (value) => {
     let bgColor = Math.round(value).toString(16);
     let normalizedColor = "";
@@ -71,25 +88,24 @@ const readBuffer = () => __awaiter(void 0, void 0, void 0, function* () {
     if (currentlyPlaying)
         return;
     currentlyPlaying = true;
-    const audioContext = new AudioContext();
-    const audioTag = document.getElementById("song");
     const circle = document.getElementById("circle");
     const container = document.getElementById("container");
-    if (audioTag)
-        audioTag.src = url;
+    const audioContext = new AudioContext();
+    let buffer;
     const res = yield fetch(url);
-    const buffer = yield res.arrayBuffer();
+    const resBuffer = yield res.arrayBuffer();
     let leftChannelBuffer;
     let rightChannelBuffer;
     const leftChannelAverages = new Array();
     const rightChannelAverages = new Array();
     const bothChannelsAverage = new Array();
     let length;
-    yield audioContext.decodeAudioData(buffer, (res) => {
-        length = res.duration;
-        leftChannelBuffer = res.getChannelData(0);
-        if (res.numberOfChannels === 2)
-            rightChannelBuffer = res.getChannelData(1);
+    yield audioContext.decodeAudioData(resBuffer, (finalBuffer) => {
+        buffer = finalBuffer;
+        length = finalBuffer.duration;
+        leftChannelBuffer = finalBuffer.getChannelData(0);
+        if (finalBuffer.numberOfChannels === 2)
+            rightChannelBuffer = finalBuffer.getChannelData(1);
     }, (err) => console.log(err));
     if (leftChannelBuffer && length) {
         const bytesPerSecond = Math.ceil(leftChannelBuffer.length / length);
@@ -111,15 +127,25 @@ const readBuffer = () => __awaiter(void 0, void 0, void 0, function* () {
         const min = Math.min(...bothChannelsAverage);
         const max = Math.max(...bothChannelsAverage);
         let index = 0;
-        if (audioTag) {
-            audioTag.currentTime = 0;
-            audioTag.play();
+        if (buffer) {
+            source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 64;
+            analyser.connect(audioContext.destination);
+            source.connect(analyser);
+            source.start();
         }
         const currentValue = bothChannelsAverage[index++];
         let normalizedValue = normalizeValue(currentValue, min, max, minScale, maxScale);
         if (circle) {
-            circle.style.transition = "linear all 0.025s";
+            circle.style.transition = "linear all 0.05s";
             circle.style.transform = `scale(${normalizedValue})`;
+            if (analyser) {
+                dataArray = new Float32Array(analyser.frequencyBinCount);
+                analyser.getFloatFrequencyData(dataArray);
+                drawFrequency(dataArray);
+            }
         }
         if (container && epilepsyMode) {
             const bgColor = normalizeHex(normalizeValue(currentValue, min, max, minColor, maxColor));
@@ -133,6 +159,11 @@ const readBuffer = () => __awaiter(void 0, void 0, void 0, function* () {
                 }
                 clearInterval(interval);
                 currentlyPlaying = false;
+            }
+            if (analyser) {
+                dataArray = new Float32Array(analyser.frequencyBinCount);
+                analyser.getFloatFrequencyData(dataArray);
+                drawFrequency(dataArray);
             }
             const currentValue = bothChannelsAverage[index++];
             let normalizedValue = normalizeValue(currentValue, min, max, minScale, maxScale);
@@ -154,9 +185,7 @@ const stopSong = () => {
     }
     if (container)
         container.style.border = `${borderSize}px solid #ffffff`;
-    const audioTag = document.getElementById("song");
-    if (audioTag)
-        audioTag.pause();
+    source === null || source === void 0 ? void 0 : source.stop();
     clearInterval(interval);
     currentlyPlaying = false;
 };
