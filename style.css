@@ -15,10 +15,8 @@ body {
 .circle {
     width: 200px;
     height: 200px;
-    background-color: black;
-    border-radius: 100%;
     transition: linear all 0.025s;
-    margin-top: 200px;
+    margin-top: 150px;
 }
 
 .container {
@@ -41,7 +39,7 @@ body {
     margin-top: 5px;
     width: 100px;
     height: 20px;
-    border: 1px solid black;
+    border: 2px solid black;
     margin-bottom: 5px;
 }
 
@@ -57,7 +55,7 @@ body {
     justify-content: center;
     align-items: flex-start;
     padding: 10px;
-    border: 1px solid black;
+    border: 2px solid black;
 }
 
 .main {

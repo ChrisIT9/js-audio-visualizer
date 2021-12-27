@@ -163,7 +163,7 @@ const readBuffer = async () => {
         let normalizedValue = normalizeValue(currentValue, min, max, minScale, maxScale);
 
         if (circle) {
-            circle.style.transition = "linear all 0.05s";
+            circle.style.transition = "ease-in-out all 0.05s";
             circle.style.transform = `scale(${normalizedValue})`; 
 
             if (analyser) {
@@ -187,7 +187,7 @@ const readBuffer = async () => {
                 clearInterval(interval);
                 currentlyPlaying = false;
             } 
-            
+
             if (analyser) {
                 dataArray = new Float32Array(analyser.frequencyBinCount);
                 analyser.getFloatFrequencyData(dataArray);

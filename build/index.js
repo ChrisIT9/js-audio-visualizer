@@ -139,7 +139,7 @@ const readBuffer = () => __awaiter(void 0, void 0, void 0, function* () {
         const currentValue = bothChannelsAverage[index++];
         let normalizedValue = normalizeValue(currentValue, min, max, minScale, maxScale);
         if (circle) {
-            circle.style.transition = "linear all 0.05s";
+            circle.style.transition = "ease-in-out all 0.05s";
             circle.style.transform = `scale(${normalizedValue})`;
             if (analyser) {
                 dataArray = new Float32Array(analyser.frequencyBinCount);
