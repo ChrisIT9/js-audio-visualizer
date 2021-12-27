@@ -1,0 +1,26 @@
+html {
+    height: 100%;
+}
+
+.circle {
+    width: 200px;
+    height: 200px;
+    background-color: black;
+    border-radius: 100%;
+    transition: 0.0125s ease-in-out all;
+    border: 2px solid white;
+}
+
+.container {
+    margin-top: 15px;
+    width: 90%;
+    height: 90vh;
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: center;
+    align-items: center;
+    transition: 0.0125s ease-in-out background-color;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    border: 10px solid white;
+}
