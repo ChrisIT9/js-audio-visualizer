@@ -9,18 +9,29 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <button onclick="readBuffer();">Start</button>
-    <button onclick="stopSong();">Stop</button>
-    <button onclick="toggleEpilepsyMode();">Modalità epilessia</button>
-    <label for="minScale">minScale:</label>
-    <input type="number" id="minScale" value="1.25" onchange="changeMinScale()" step="0.1">
-    <label for="maxScale">maxScale:</label>
-    <input type="number" id="maxScale" value="2.0" onchange="changeMaxScale()" step="0.1">
-    <label for="circleSize">circleSize:</label>
-    <input type="number" id="circleSize" value="200" onchange="changeCircleSize()" step="10">
+    <div class="controls">
+        <div>
+            <button onclick="readBuffer();">Start</button>
+            <button onclick="stopSong();">Stop</button>
+            <button onclick="toggleEpilepsyMode();">Modalità epilessia</button>
+        </div>
+        <label for="minScale">minScale:</label>
+        <input type="number" id="minScale" value="1.25" onchange="changeMinScale()" step="0.1">
+        <label for="maxScale">maxScale:</label>
+        <input type="number" id="maxScale" value="2.0" onchange="changeMaxScale()" step="0.1">
+        <label for="circleSize">circleSize:</label>
+        <input type="number" id="circleSize" value="200" onchange="changeCircleSize()" step="10">
+    </div>    
+    
     <div id="container" class="container">
         <div class="circle" id="circle"></div>
     </div>
+    <div class="loudness-container">
+        <div class="loudness" id="loudness"></div>
+    </div>
+
+    <canvas id="myCanvas" width="1000" height="100" style="border:1px solid #000000;">
+    </canvas>
     <audio id="song"></audio>
 </body>
 </html>

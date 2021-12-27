@@ -1,3 +1,7 @@
+* {
+    box-sizing: border-box;
+}
+
 html {
     height: 100%;
 }
@@ -7,20 +11,41 @@ html {
     height: 200px;
     background-color: black;
     border-radius: 100%;
-    transition: 0.0125s ease-in-out all;
-    border: 2px solid white;
+    transition: linear all 0.025s;
 }
 
 .container {
     margin-top: 15px;
     width: 90%;
-    height: 90vh;
+    height: 85vh;
     display: flex;
     flex-flow: row nowrap;
     justify-content: center;
     align-items: center;
-    transition: 0.0125s ease-in-out background-color;
+    transition: ease-in-out all 0.025s;
     border-radius: 10px;
     margin-bottom: 15px;
     border: 10px solid white;
+}
+
+.loudness-container {
+    margin-top: 5px;
+    width: 100px;
+    height: 20px;
+    border: 1px solid black;
+}
+
+.loudness {
+    height: 100%;
+    background-color: blue;
+    width: 0px;
+}
+
+.controls {
+    display: flex;
+    flex-flow: column wrap;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 10px;
+    border: 1px solid black;
 }

@@ -11,13 +11,23 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 const intervalMs = 25;
 let minScale = 1.25;
 let maxScale = 2;
-const minColor = 16500000;
+const minColor = 16400000;
 const maxColor = 16600000;
 const borderSize = 10;
 let epilepsyMode = false;
 var interval;
 let currentlyPlaying = false;
 const url = "http://localhost:3001/";
+let x = 0;
+let start = false;
+let prev;
+const thresholds = [
+    { minBound: 0.0, highBound: 0.3, boost: 1.2 },
+    { minBound: 0.3, highBound: 0.5, boost: 1.15 },
+    { minBound: 0.5, highBound: 0.6, boost: 1.1 },
+    { minBound: 0.6, highBound: 0.75, boost: 1.05 },
+    { minBound: 0.75, highBound: 1.00, boost: 1.0 }
+];
 const normalizeHex = (value) => {
     let bgColor = Math.round(value).toString(16);
     let normalizedColor = "";
@@ -29,8 +39,36 @@ const normalizeHex = (value) => {
     normalizedColor += bgColor;
     return normalizedColor;
 };
-const normalizeValue = (value, min, max, minRange, maxRange) => {
+const normalizeValue = (value, min, max, minRange, maxRange, thresholds) => {
+    const loudness = (value - min) / (max - min);
+    const y = (90 - 10) * loudness + 10;
+    const canvas = document.getElementById("myCanvas");
+    const ctx = canvas.getContext('2d');
+    if (start)
+        start = false;
+    else {
+        ctx.beginPath();
+        ctx.moveTo(prev === null || prev === void 0 ? void 0 : prev.x, prev === null || prev === void 0 ? void 0 : prev.y);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+    }
+    if (x >= 1000) {
+        x = 0;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    prev = { x, y };
+    x += 3;
+    const loudnessDiv = document.getElementById("loudness");
+    if (loudnessDiv)
+        loudnessDiv.style.width = (loudness * 100).toString() + "%";
+    // if (!thresholds) 
     return (maxRange - minRange) * (value - min) / (max - min) + minRange;
+    /* for (let i = 0; i < thresholds.length; i++) {
+        if (i === thresholds.length - 1 || (loudness >= thresholds[i].minBound && loudness < thresholds[i].highBound))
+            return ((maxRange - minRange) * loudness + minRange) * thresholds[i].boost;
+    }
+
+    return (maxRange - minRange) * (value - min) / (max - min) + minRange; */
 };
 const readBuffer = () => __awaiter(void 0, void 0, void 0, function* () {
     if (currentlyPlaying)
@@ -59,13 +97,11 @@ const readBuffer = () => __awaiter(void 0, void 0, void 0, function* () {
         const bytesPerSecond = Math.ceil(leftChannelBuffer.length / length);
         const chunkSize = Math.ceil(bytesPerSecond * (intervalMs / 1000));
         for (let i = 0; i < leftChannelBuffer.length; i += chunkSize) {
-            const slicedArray = leftChannelBuffer.slice(i, i + chunkSize + 1);
-            const chunkSum = slicedArray.reduce((acc, item) => acc + item, 0.0);
+            let slicedArray = leftChannelBuffer.slice(i, i + chunkSize + 1);
+            let chunkSum = slicedArray.reduce((acc, item) => acc + item, 0.0);
             leftChannelAverages.push(chunkSum / slicedArray.length);
-        }
-        for (let i = 0; i < rightChannelBuffer.length; i += chunkSize) {
-            const slicedArray = rightChannelBuffer.slice(i, i + chunkSize + 1);
-            const chunkSum = slicedArray.reduce((acc, item) => acc + item, 0.0);
+            slicedArray = rightChannelBuffer.slice(i, i + chunkSize + 1);
+            chunkSum = slicedArray.reduce((acc, item) => acc + item, 0.0);
             rightChannelAverages.push(chunkSum / slicedArray.length);
         }
         leftChannelAverages.map((item, index) => { bothChannelsAverage.push((item + rightChannelAverages[index]) / 2); });
@@ -77,38 +113,44 @@ const readBuffer = () => __awaiter(void 0, void 0, void 0, function* () {
             audioTag.play();
         }
         const currentValue = bothChannelsAverage[index++];
-        const bgColor = normalizeHex(normalizeValue(currentValue, min, max, minColor, maxColor));
         let normalizedValue = normalizeValue(currentValue, min, max, minScale, maxScale);
         if (circle) {
-            circle.style.transition = "0.0125s ease-in-out all";
+            circle.style.transition = "linear all 0.025s";
             circle.style.transform = `scale(${normalizedValue})`;
         }
-        if (container && epilepsyMode)
+        if (container && epilepsyMode) {
+            const bgColor = normalizeHex(normalizeValue(currentValue, min, max, minColor, maxColor));
             container.style.border = `${borderSize}px solid #${bgColor}`;
+        }
         interval = setInterval(() => {
             if (index > bothChannelsAverage.length) {
                 if (circle) {
-                    circle.style.transition = "0.3s ease-in-out all";
+                    circle.style.transition = "ease-in-out all 0.3s";
                     circle.style.transform = "scale(1)";
                 }
                 clearInterval(interval);
                 currentlyPlaying = false;
             }
             const currentValue = bothChannelsAverage[index++];
-            const bgColor = normalizeHex(normalizeValue(currentValue, min, max, minColor, maxColor));
             let normalizedValue = normalizeValue(currentValue, min, max, minScale, maxScale);
             if (circle)
                 circle.style.transform = `scale(${normalizedValue})`;
-            if (container && epilepsyMode)
+            if (container && epilepsyMode) {
+                const bgColor = normalizeHex(normalizeValue(currentValue, min, max, minColor, maxColor));
                 container.style.border = `${borderSize}px solid #${bgColor}`;
+            }
         }, intervalMs);
     }
 });
 const stopSong = () => {
     const container = document.getElementById("container");
     const circle = document.getElementById("circle");
+    const canvas = document.getElementById("myCanvas");
+    const ctx = canvas.getContext('2d');
+    x = 0;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (circle) {
-        circle.style.transition = "0.3s ease-in-out all";
+        circle.style.transition = "ease-in-out all 0.3s";
         circle.style.transform = "scale(1)";
     }
     if (container)
