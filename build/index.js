@@ -19,7 +19,6 @@ var interval;
 let currentlyPlaying = false;
 const url = "http://localhost:3001/";
 let x = 0;
-let start = false;
 let prev;
 const thresholds = [
     { minBound: 0.0, highBound: 0.3, boost: 1.2 },
@@ -44,9 +43,7 @@ const normalizeValue = (value, min, max, minRange, maxRange, thresholds) => {
     const y = (90 - 10) * loudness + 10;
     const canvas = document.getElementById("myCanvas");
     const ctx = canvas.getContext('2d');
-    if (start)
-        start = false;
-    else {
+    if (prev) {
         ctx.beginPath();
         ctx.moveTo(prev === null || prev === void 0 ? void 0 : prev.x, prev === null || prev === void 0 ? void 0 : prev.y);
         ctx.lineTo(x, y);
@@ -91,20 +88,26 @@ const readBuffer = () => __awaiter(void 0, void 0, void 0, function* () {
     yield audioContext.decodeAudioData(buffer, (res) => {
         length = res.duration;
         leftChannelBuffer = res.getChannelData(0);
-        rightChannelBuffer = res.getChannelData(1);
+        if (res.numberOfChannels === 2)
+            rightChannelBuffer = res.getChannelData(1);
     }, (err) => console.log(err));
-    if (leftChannelBuffer && rightChannelBuffer && length) {
+    if (leftChannelBuffer && length) {
         const bytesPerSecond = Math.ceil(leftChannelBuffer.length / length);
         const chunkSize = Math.ceil(bytesPerSecond * (intervalMs / 1000));
         for (let i = 0; i < leftChannelBuffer.length; i += chunkSize) {
             let slicedArray = leftChannelBuffer.slice(i, i + chunkSize + 1);
             let chunkSum = slicedArray.reduce((acc, item) => acc + item, 0.0);
             leftChannelAverages.push(chunkSum / slicedArray.length);
-            slicedArray = rightChannelBuffer.slice(i, i + chunkSize + 1);
-            chunkSum = slicedArray.reduce((acc, item) => acc + item, 0.0);
-            rightChannelAverages.push(chunkSum / slicedArray.length);
+            if (rightChannelBuffer) {
+                slicedArray = rightChannelBuffer.slice(i, i + chunkSize + 1);
+                chunkSum = slicedArray.reduce((acc, item) => acc + item, 0.0);
+                rightChannelAverages.push(chunkSum / slicedArray.length);
+            }
         }
-        leftChannelAverages.map((item, index) => { bothChannelsAverage.push((item + rightChannelAverages[index]) / 2); });
+        if (leftChannelBuffer && rightChannelBuffer)
+            leftChannelAverages.map((item, index) => { bothChannelsAverage.push((item + rightChannelAverages[index]) / 2); });
+        else
+            bothChannelsAverage.push(...leftChannelAverages.slice(0));
         const min = Math.min(...bothChannelsAverage);
         const max = Math.max(...bothChannelsAverage);
         let index = 0;
@@ -145,10 +148,6 @@ const readBuffer = () => __awaiter(void 0, void 0, void 0, function* () {
 const stopSong = () => {
     const container = document.getElementById("container");
     const circle = document.getElementById("circle");
-    const canvas = document.getElementById("myCanvas");
-    const ctx = canvas.getContext('2d');
-    x = 0;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (circle) {
         circle.style.transition = "ease-in-out all 0.3s";
         circle.style.transform = "scale(1)";
