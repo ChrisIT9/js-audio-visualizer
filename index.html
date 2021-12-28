@@ -5,7 +5,6 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visualizer</title>
-    <script src="build/index.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,23 +19,25 @@
         <label for="maxScale">maxScale:</label>
         <input type="number" id="maxScale" value="2" onchange="changeMaxScale()" step="0.1">
         <label for="circleSize">circleSize:</label>
-        <input type="number" id="circleSize" value="200" onchange="changeCircleSize()" step="10">
+        <input type="number" id="circleSize" value="200" onchange="changeBlobSize()" step="10">
+        <label for="url">URL</label>
+        <input type="text" id="url">
     </div>    
     <div class="main">
-        <div id="container" class="container">
-            <svg viewBox="0 0 200 200" id="circle" class="circle" xmlns="http://www.w3.org/2000/svg">
+        <div id="blobContainer" class="blobContainer">
+            <svg viewBox="0 0 200 200" id="blob" class="blob" xmlns="http://www.w3.org/2000/svg">
                 <path fill="#FF0066" d="M53.9,-64.3C69.6,-51.1,81.8,-33.8,84.1,-15.6C86.4,2.7,78.8,21.9,67.7,37.2C56.6,52.6,42.1,64.1,25.7,69.5C9.4,75,-8.7,74.4,-25.8,69C-42.9,63.6,-58.9,53.5,-70.2,38.4C-81.6,23.3,-88.2,3.3,-85.9,-16.1C-83.6,-35.5,-72.5,-54.3,-56.7,-67.5C-40.9,-80.7,-20.5,-88.2,-0.7,-87.3C19.1,-86.5,38.2,-77.4,53.9,-64.3Z" transform="translate(100 100)" />
               </svg>
-            <canvas id="frequency" width="750" height="200"></canvas>
+            <canvas id="freqBars" width="750" height="200"></canvas>
         </div>
         <div class="loudness-container">
-            <div class="loudness" id="loudness"></div>
+            <div class="loudnessBar" id="loudnessBar"></div>
         </div>
     
-        <canvas id="myCanvas" width="1000" height="100" style="border: 2px solid #000000;">
+        <canvas id="freqGraph" width="1000" height="100" style="border: 2px solid #000000;">
         </canvas>
     </div>
     
-    
+    <script src="build/index.js"></script>
 </body>
 </html>

@@ -12,14 +12,14 @@ body {
     text-shadow: 0 0 black;
 }
 
-.circle {
+.blob {
     width: 200px;
     height: 200px;
     transition: linear all 0.025s;
     margin-top: 150px;
 }
 
-.container {
+.blobContainer {
     margin-top: 15px;
     width: 90%;
     height: 85vh;
@@ -43,9 +43,9 @@ body {
     margin-bottom: 5px;
 }
 
-.loudness {
+.loudnessBar {
     height: 100%;
-    background-color: blue;
+    background-color: #FF0066;
     width: 0px;
 }
 

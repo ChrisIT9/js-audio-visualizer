@@ -9,20 +9,35 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 const intervalMs = 25;
+const minColor = 13472076;
+const maxColor = 13472364;
+const borderSize = 10;
+const minContainerScale = 0.985;
+const maxContainerScale = 1.025;
+const freqGraphCanvas = document.getElementById("freqGraph");
+const freqGraphCtx = freqGraphCanvas.getContext('2d');
+freqGraphCtx.fillStyle = "#ff3232";
+freqGraphCtx.strokeStyle = "#ff3232";
+freqGraphCtx.beginPath();
+freqGraphCtx.moveTo(0, freqGraphCanvas.height / 2);
+freqGraphCtx.lineTo(freqGraphCanvas.width, freqGraphCanvas.height / 2);
+freqGraphCtx.stroke();
+const freqBarsCanvas = document.getElementById("freqBars");
+const freqBarsCtx = freqBarsCanvas.getContext('2d');
+const loudnessDiv = document.getElementById("loudnessBar");
+const blob = document.getElementById("blob");
+const blobContainer = document.getElementById("blobContainer");
 let minScale = 1.25;
 let maxScale = 2;
-const minColor = 13472076;
-const maxColor = 13472332;
-const borderSize = 10;
 let epilepsyMode = false;
-var interval;
+let interval;
 let currentlyPlaying = false;
-const url = "http://localhost:3001/";
-let x = 0;
+let freqGraphX = 0;
 let prev;
 let source;
 let analyser;
 let dataArray;
+let url = "http://localhost:3001/"; // Default
 const thresholds = [
     { minBound: 0.0, maxBound: 0.3, boost: 1.2 },
     { minBound: 0.3, maxBound: 0.5, boost: 1.15 },
@@ -30,19 +45,33 @@ const thresholds = [
     { minBound: 0.6, maxBound: 0.75, boost: 1.05 },
     { minBound: 0.75, maxBound: 1.00, boost: 1.0 }
 ];
-const drawFrequency = (frequencyData) => {
+const drawFrequencyBars = (frequencyData) => {
     const barWidth = 20;
-    let xAxis = 0;
-    const freqCanvas = document.getElementById("frequency");
-    const context = freqCanvas.getContext('2d');
-    context.fillStyle = 'rgb(84, 70, 118)';
-    context.fillRect(0, 0, freqCanvas.width, freqCanvas.height);
+    let freqBarsX = 0;
+    freqBarsCtx.fillStyle = 'rgb(84, 70, 118)';
+    freqBarsCtx.fillRect(0, 0, freqBarsCanvas.width, freqBarsCanvas.height);
     for (let i = 0; i < frequencyData.length; i++) {
         const barHeight = (frequencyData[i] + 140) * 2;
-        context.fillStyle = `rgb(${Math.floor(barHeight + 100)}, 50, 50)`;
-        context.fillRect(xAxis, freqCanvas.height - barHeight / 2, barWidth, barHeight / 2);
-        xAxis += barWidth + 1.5;
+        freqBarsCtx.fillStyle = `rgb(${Math.floor(barHeight + 100)}, 50, 50)`;
+        freqBarsCtx.fillRect(freqBarsX, freqBarsCanvas.height - barHeight / 2, barWidth, barHeight / 2);
+        freqBarsX += barWidth + 1.5;
     }
+};
+const drawFrequencyGraph = (value, min, max) => {
+    const loudness = (value - min) / (max - min);
+    const height = (45 - (-45)) * loudness + (-45);
+    freqGraphCtx.fillStyle = "#ff3232";
+    freqGraphCtx.strokeStyle = "#ff3232";
+    freqGraphCtx.fillRect(freqGraphX, freqGraphCanvas.height / 2, 2, height);
+    if (freqGraphX >= 1000) {
+        freqGraphX = 0;
+        freqGraphCtx.clearRect(0, 0, freqGraphCanvas.width, freqGraphCanvas.height);
+        freqGraphCtx.beginPath();
+        freqGraphCtx.moveTo(0, freqGraphCanvas.height / 2);
+        freqGraphCtx.lineTo(freqGraphCanvas.width, freqGraphCanvas.height / 2);
+        freqGraphCtx.stroke();
+    }
+    freqGraphX += 2;
 };
 const normalizeHex = (value) => {
     let bgColor = Math.round(value).toString(16);
@@ -55,43 +84,28 @@ const normalizeHex = (value) => {
     normalizedColor += bgColor;
     return normalizedColor;
 };
-const normalizeValue = (value, min, max, minRange, maxRange, thresholds) => {
+const normalizeValue = (value, min, max, minRange, maxRange) => {
     const loudness = (value - min) / (max - min);
-    const y = (90 - 10) * loudness + 10;
-    const canvas = document.getElementById("myCanvas");
-    const ctx = canvas.getContext('2d');
-    if (prev) {
-        ctx.beginPath();
-        ctx.moveTo(prev === null || prev === void 0 ? void 0 : prev.x, prev === null || prev === void 0 ? void 0 : prev.y);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-    }
-    if (x >= 1000) {
-        x = 0;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-    prev = { x, y };
-    x += 3;
-    const loudnessDiv = document.getElementById("loudness");
     if (loudnessDiv)
         loudnessDiv.style.width = (loudness * 100).toString() + "%";
-    // if (!thresholds) 
-    return (maxRange - minRange) * (value - min) / (max - min) + minRange;
+    /* if (!thresholds)
+        return (maxRange - minRange) * (value - min) / (max - min) + minRange; */
     /* for (let i = 0; i < thresholds.length; i++) {
         if (i === thresholds.length - 1 || (loudness >= thresholds[i].minBound && loudness < thresholds[i].highBound))
             return ((maxRange - minRange) * loudness + minRange) * thresholds[i].boost;
-    }
-
-    return (maxRange - minRange) * (value - min) / (max - min) + minRange; */
+    } */
+    return (maxRange - minRange) * (value - min) / (max - min) + minRange;
 };
 const readBuffer = () => __awaiter(void 0, void 0, void 0, function* () {
     if (currentlyPlaying)
         return;
     currentlyPlaying = true;
-    const circle = document.getElementById("circle");
-    const container = document.getElementById("container");
     const audioContext = new AudioContext();
     let buffer;
+    const urlInput = document.getElementById("url");
+    if (urlInput && urlInput.value && urlInput.value !== "") {
+        url = urlInput.value;
+    }
     const res = yield fetch(url);
     const resBuffer = yield res.arrayBuffer();
     let leftChannelBuffer;
@@ -138,62 +152,77 @@ const readBuffer = () => __awaiter(void 0, void 0, void 0, function* () {
         }
         const currentValue = bothChannelsAverage[index++];
         let normalizedValue = normalizeValue(currentValue, min, max, minScale, maxScale);
-        if (circle) {
-            circle.style.transition = "ease-in-out all 0.05s";
-            circle.style.transform = `scale(${normalizedValue})`;
+        drawFrequencyGraph(currentValue, min, max);
+        if (blob) {
+            blob.style.transition = "ease-in-out all 0.05s";
+            blob.style.transform = `scale(${normalizedValue})`;
             if (analyser) {
                 dataArray = new Float32Array(analyser.frequencyBinCount);
                 analyser.getFloatFrequencyData(dataArray);
-                drawFrequency(dataArray);
+                drawFrequencyBars(dataArray);
             }
         }
-        if (container && epilepsyMode) {
-            const bgColor = normalizeHex(normalizeValue(currentValue, min, max, minColor, maxColor));
-            container.style.border = `${borderSize}px solid #${bgColor}`;
+        if (blobContainer && epilepsyMode) {
+            const containerScale = normalizeValue(currentValue, min, max, minContainerScale, maxContainerScale);
+            blobContainer.style.transform = `scale(${containerScale})`;
         }
         interval = setInterval(() => {
             if (index > bothChannelsAverage.length) {
-                if (circle) {
-                    circle.style.transition = "ease-in-out all 0.3s";
-                    circle.style.transform = "scale(1)";
+                if (blob) {
+                    blob.style.transition = "ease-in-out all 0.3s";
+                    blob.style.transform = "scale(1)";
                 }
                 clearInterval(interval);
                 currentlyPlaying = false;
+                freqGraphX = 0;
+                freqGraphCtx.beginPath();
+                freqGraphCtx.clearRect(0, 0, freqGraphCanvas.width, freqGraphCanvas.height);
+                freqGraphCtx.fillStyle = "#ff3232";
+                freqGraphCtx.strokeStyle = "#ff3232";
+                freqGraphCtx.moveTo(0, freqGraphCanvas.height / 2);
+                freqGraphCtx.lineTo(freqGraphCanvas.width, freqGraphCanvas.height / 2);
+                freqGraphCtx.stroke();
             }
             if (analyser) {
                 dataArray = new Float32Array(analyser.frequencyBinCount);
                 analyser.getFloatFrequencyData(dataArray);
-                drawFrequency(dataArray);
+                drawFrequencyBars(dataArray);
             }
             const currentValue = bothChannelsAverage[index++];
             let normalizedValue = normalizeValue(currentValue, min, max, minScale, maxScale);
-            if (circle)
-                circle.style.transform = `scale(${normalizedValue})`;
-            if (container && epilepsyMode) {
-                const bgColor = normalizeHex(normalizeValue(currentValue, min, max, minColor, maxColor));
-                container.style.border = `${borderSize}px solid #${bgColor}`;
+            drawFrequencyGraph(currentValue, min, max);
+            if (blob)
+                blob.style.transform = `scale(${normalizedValue})`;
+            if (blobContainer && epilepsyMode) {
+                const containerScale = normalizeValue(currentValue, min, max, minContainerScale, maxContainerScale);
+                blobContainer.style.transform = `scale(${containerScale})`;
             }
         }, intervalMs);
     }
 });
 const stopSong = () => {
-    const container = document.getElementById("container");
-    const circle = document.getElementById("circle");
-    if (circle) {
-        circle.style.transition = "ease-in-out all 0.3s";
-        circle.style.transform = "scale(1)";
+    if (blob) {
+        blob.style.transition = "ease-in-out all 0.3s";
+        blob.style.transform = "scale(1)";
     }
-    if (container)
-        container.style.border = `${borderSize}px solid #ffffff`;
+    freqGraphX = 0;
+    freqGraphCtx.beginPath();
+    freqGraphCtx.clearRect(0, 0, freqGraphCanvas.width, freqGraphCanvas.height);
+    freqGraphCtx.fillStyle = "#ff3232";
+    freqGraphCtx.strokeStyle = "#ff3232";
+    freqGraphCtx.moveTo(0, freqGraphCanvas.height / 2);
+    freqGraphCtx.lineTo(freqGraphCanvas.width, freqGraphCanvas.height / 2);
+    freqGraphCtx.stroke();
+    if (blobContainer)
+        blobContainer.style.border = `${borderSize}px solid #ffffff`;
     source === null || source === void 0 ? void 0 : source.stop();
     clearInterval(interval);
     currentlyPlaying = false;
 };
 const toggleEpilepsyMode = () => {
     epilepsyMode = !epilepsyMode;
-    const container = document.getElementById("container");
-    if (container)
-        container.style.border = `${borderSize}px solid #ffffff`;
+    if (blobContainer)
+        blobContainer.style.transform = "scale(1)";
 };
 const changeMinScale = () => {
     const input = document.getElementById("minScale");
@@ -213,10 +242,11 @@ const changeMaxScale = () => {
     }
     maxScale = value;
 };
-const changeCircleSize = () => {
-    const circle = document.getElementById("circle");
+const changeBlobSize = () => {
     const input = document.getElementById("circleSize");
     const value = Number(input.value);
-    circle.style.height = value + "px";
-    circle.style.width = value + "px";
+    if (blob) {
+        blob.style.height = value + "px";
+        blob.style.width = value + "px";
+    }
 };
