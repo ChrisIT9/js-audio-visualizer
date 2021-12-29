@@ -13,13 +13,18 @@
             <button onclick="readBuffer();">Start</button>
             <button onclick="stopSong();">Stop</button>
             <button onclick="toggleEpilepsyMode();">Modalità epilessia</button>
+            <button onclick="toggleEpilepsyModeFr();">Modalità epilessia però veramente</button>
         </div>
         <label for="minScale">minScale:</label>
         <input type="number" id="minScale" value="1.25" onchange="changeMinScale()" step="0.1">
         <label for="maxScale">maxScale:</label>
         <input type="number" id="maxScale" value="2" onchange="changeMaxScale()" step="0.1">
-        <label for="circleSize">circleSize:</label>
-        <input type="number" id="circleSize" value="200" onchange="changeBlobSize()" step="10">
+        <label for="blobSize">blobSize:</label>
+        <input type="number" id="blobSize" value="200" onchange="changeBlobSize()" step="10">
+        <label for="minColor">minColor:</label>
+        <input type="number" id="minColor" value="0" min="0" onchange="changeMinColor()" step="50000">
+        <label for="maxColor">maxColor:</label>
+        <input type="number" id="maxColor" value="16777215" max="16777215" onchange="changeMaxColor()" step="50000">
         <label for="url">URL</label>
         <input type="text" id="url">
     </div>    

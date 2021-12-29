@@ -28,7 +28,7 @@ body {
     justify-content: space-between;
     align-items: center;
     transition: ease-in-out all 0.025s;
-    border-radius: 10px;
+    border-radius: 60px;
     margin-bottom: 15px;
     border: 10px solid white;
     min-width: 800px;

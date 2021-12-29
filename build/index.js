@@ -9,8 +9,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 const intervalMs = 25;
-const minColor = 13472076;
-const maxColor = 13472364;
+let minColor = 0;
+let maxColor = 16777215;
 const borderSize = 10;
 const minContainerScale = 0.985;
 const maxContainerScale = 1.025;
@@ -30,6 +30,7 @@ const blobContainer = document.getElementById("blobContainer");
 let minScale = 1.25;
 let maxScale = 2;
 let epilepsyMode = false;
+let epilepsyModeFr = false;
 let interval;
 let currentlyPlaying = false;
 let freqGraphX = 0;
@@ -48,8 +49,7 @@ const thresholds = [
 const drawFrequencyBars = (frequencyData) => {
     const barWidth = 20;
     let freqBarsX = 0;
-    freqBarsCtx.fillStyle = 'rgb(84, 70, 118)';
-    freqBarsCtx.fillRect(0, 0, freqBarsCanvas.width, freqBarsCanvas.height);
+    freqBarsCtx.clearRect(0, 0, freqBarsCanvas.width, freqBarsCanvas.height);
     for (let i = 0; i < frequencyData.length; i++) {
         const barHeight = (frequencyData[i] + 140) * 2;
         freqBarsCtx.fillStyle = `rgb(${Math.floor(barHeight + 100)}, 50, 50)`;
@@ -166,6 +166,11 @@ const readBuffer = () => __awaiter(void 0, void 0, void 0, function* () {
             const containerScale = normalizeValue(currentValue, min, max, minContainerScale, maxContainerScale);
             blobContainer.style.transform = `scale(${containerScale})`;
         }
+        if (epilepsyModeFr) {
+            const bgColor = normalizeHex(normalizeValue(currentValue, min, max, minColor, maxColor));
+            if (blobContainer)
+                blobContainer.style.backgroundColor = "#" + bgColor;
+        }
         interval = setInterval(() => {
             if (index > bothChannelsAverage.length) {
                 if (blob) {
@@ -196,6 +201,11 @@ const readBuffer = () => __awaiter(void 0, void 0, void 0, function* () {
             if (blobContainer && epilepsyMode) {
                 const containerScale = normalizeValue(currentValue, min, max, minContainerScale, maxContainerScale);
                 blobContainer.style.transform = `scale(${containerScale})`;
+            }
+            if (epilepsyModeFr) {
+                const bgColor = normalizeHex(normalizeValue(currentValue, min, max, minColor, maxColor));
+                if (blobContainer)
+                    blobContainer.style.backgroundColor = "#" + bgColor;
             }
         }, intervalMs);
     }
@@ -243,10 +253,41 @@ const changeMaxScale = () => {
     maxScale = value;
 };
 const changeBlobSize = () => {
-    const input = document.getElementById("circleSize");
+    const input = document.getElementById("blobSize");
     const value = Number(input.value);
     if (blob) {
         blob.style.height = value + "px";
         blob.style.width = value + "px";
     }
+};
+const toggleEpilepsyModeFr = () => {
+    epilepsyModeFr = !epilepsyModeFr;
+    if (blobContainer)
+        blobContainer.style.backgroundColor = "rgba(0, 0, 0, 0)";
+};
+const changeMinColor = () => {
+    const input = document.getElementById("minColor");
+    const value = Number(input.value);
+    if (value < 0 || value > 16777215) {
+        input.value = minColor;
+        return;
+    }
+    if (value >= maxColor) {
+        input.value = minColor;
+        return;
+    }
+    minColor = value;
+};
+const changeMaxColor = () => {
+    const input = document.getElementById("maxColor");
+    const value = Number(input.value);
+    if (value < 0 || value > 16777215) {
+        input.value = maxColor;
+        return;
+    }
+    if (value <= minColor) {
+        input.value = maxColor;
+        return;
+    }
+    maxColor = value;
 };
